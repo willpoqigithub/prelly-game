@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title> Co-op Kitchen </title>
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <style>
+    :root {
+      --primary: #ff9f43;
+      --primary-dark: #e67e22;
+      --bg: #1e272e;
+      --panel: #2f3640;
+      --accent: #00d2d3;
+      --success: #2ed573;
+      --danger: #ff4757;
+      --text: #f5f6fa;
+      --muted: #a4b0be;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1e272e 0%, #2f3640 50%, #1e272e 100%);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      font-size: 2.6rem;
+      background: linear-gradient(90deg, #ff9f43, #ff6b6b);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.2rem;
+      text-shadow: 0 4px 20px rgba(255,159,67,0.3);
+    }
+    .subtitle { color: var(--muted); margin-bottom: 1.5rem; font-size: 1.15rem; }
+    .screen { width: 100%; max-width: 980px; padding: 1rem; display: none; }
+    .screen.active { display: block; }
+    .panel {
+      background: rgba(47,54,64,0.95);
+      border-radius: 20px;
+      padding: 1.8rem;
+      box-shadow: 0 15px 50px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.05);
+      backdrop-filter: blur(12px);
+    }
+    button {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: #1e272e;
+      border: none;
+      padding: 13px 28px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 6px 20px rgba(255,159,67,0.35);
+    }
+    button:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(255,159,67,0.45); }
+    button:active { transform: translateY(0); }
+    button.secondary {
+      background: #3d4450;
+      color: var(--text);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+    button.secondary:hover { background: #4a5260; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    input[type="text"] {
+      width: 100%;
+      padding: 14px 18px;
+      font-size: 1.3rem;
+      border: 2px solid #3d4450;
+      border-radius: 12px;
+      background: #1e272e;
+      color: white;
+      text-align: center;
+      letter-spacing: 4px;
+      font-weight: 700;
+      margin: 12px 0;
+    }
+    input:focus { outline: none; border-color: var(--primary); }
+    .status { margin-top: 12px; min-height: 24px; font-size: 0.95rem; color: var(--success); }
+
+    /* Character Select - Anime Profile Style */
+    .char-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin: 1.2rem 0;
+    }
+    .char-card {
+      background: linear-gradient(145deg, #2a3140, #1e272e);
+      border: 3px solid transparent;
+      border-radius: 18px;
+      padding: 14px 8px 12px;
+      cursor: pointer;
+      transition: all 0.22s;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .char-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 40%;
+      background: linear-gradient(180deg, rgba(255,255,255,0.08), transparent);
+      pointer-events: none;
+    }
+    .char-card:hover { border-color: #666; transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.4); }
+    .char-card.selected { border-color: var(--primary); background: linear-gradient(145deg, #3a2a20, #2a2118); box-shadow: 0 0 25px rgba(255,159,67,0.4); }
+    .char-avatar {
+      width: 82px;
+      height: 82px;
+      border-radius: 50%;
+      margin: 0 auto 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: white;
+      text-shadow: 0 2px 6px rgba(0,0,0,0.5);
+      position: relative;
+      border: 3px solid rgba(255,255,255,0.25);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.35), inset 0 -8px 12px rgba(0,0,0,0.15);
+    }
+    .char-avatar .anime-eye {
+      position: absolute;
+      width: 14px;
+      height: 16px;
+      background: white;
+      border-radius: 50%;
+      top: 32px;
+    }
+    .char-avatar .anime-eye::after {
+      content: '';
+      position: absolute;
+      width: 7px;
+      height: 8px;
+      background: #2d3436;
+      border-radius: 50%;
+      top: 4px;
+      left: 3.5px;
+    }
+    .char-avatar .eye-left { left: 20px; }
+    .char-avatar .eye-right { right: 20px; }
+    .char-avatar .blush {
+      position: absolute;
+      width: 12px;
+      height: 6px;
+      background: rgba(255,150,150,0.45);
+      border-radius: 50%;
+      top: 48px;
+    }
+    .char-avatar .blush-left { left: 12px; }
+    .char-avatar .blush-right { right: 12px; }
+    .char-name { font-weight: 700; font-size: 1rem; margin-top: 2px; }
+    .char-gender { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* Game UI */
+    #gameScreen { max-width: 1000px; }
+    #topBar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(30,39,46,0.9);
+      padding: 10px 18px;
+      border-radius: 16px 16px 0 0;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .hud-item { font-size: 1.05rem; font-weight: 600; }
+    .hud-item span { color: var(--primary); }
+    #ordersBar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 10px 14px;
+      background: rgba(47,54,64,0.9);
+      min-height: 54px;
+      align-items: center;
+    }
+    .order-card {
+      background: linear-gradient(135deg, #2f3640, #3d4450);
+      border: 2px solid var(--primary);
+      border-radius: 14px;
+      padding: 6px 14px;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+    .order-card.urgent { border-color: var(--danger); animation: pulse 0.7s infinite; }
+    @keyframes pulse { 50% { opacity: 0.7; } }
+    .recipe-hint { font-size: 0.78rem; color: var(--muted); }
+
+    canvas {
+      display: block;
+      width: 100%;
+      max-width: 960px;
+      border-radius: 0 0 16px 16px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+      background: #2d3436;
+    }
+
+    #bottomBar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+      padding: 0 4px;
+    }
+    .control-group { display: flex; gap: 8px; align-items: center; }
+    .icon-btn {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem;
+      padding: 0;
+      background: #3d4450;
+      color: white;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .icon-btn.active { background: var(--success); color: #1e272e; }
+    .icon-btn.danger { background: var(--danger); }
+    .music-player {
+      background: rgba(47,54,64,0.95);
+      border-radius: 14px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.9rem;
+    }
+    .music-player button { padding: 6px 12px; font-size: 0.9rem; border-radius: 8px; }
+    #controlsHelp {
+      margin-top: 10px;
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.5;
+    }
+    .room-code-big {
+      font-size: 2.4rem;
+      font-weight: 800;
+      letter-spacing: 8px;
+      color: var(--primary);
+      background: #1e272e;
+      padding: 12px 20px;
+      border-radius: 14px;
+      margin: 12px 0;
+      user-select: all;
+    }
+    .hidden { display: none !important; }
+    .flex-center { display: flex; flex-direction: column; align-items: center; text-align: center; }
+  </style>
+</head>
+<body>
+  <!-- ========== CHARACTER SELECT ========== -->
+  <div id="charScreen" class="screen active">
+    <div class="flex-center">
+      <h1>Willy at Precious</h1>
+      <p class="subtitle">Co-op Kitchen Chaos</p>
+      <div class="panel" style="max-width:720px;width:100%">
+        <h2 style="margin-bottom:8px">Choose Your Character</h2>
+        <p style="color:var(--muted);margin-bottom:12px">Pick who you want to play as</p>
+        <div class="char-grid" id="charGrid"></div>
+        <div style="margin-top:1.2rem">
+          <button id="btnContinue" disabled>Continue</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== LOBBY ========== -->
+  <div id="lobbyScreen" class="screen">
+    <div class="flex-center">
+      <h1>Willy at Precious</h1>
+      <p class="subtitle">You are: <strong id="selectedCharName">?</strong></p>
+      <div class="panel" style="max-width:440px;width:100%">
+        <button id="btnCreate" style="width:100%;margin-bottom:12px">Create Room</button>
+        <button class="secondary" id="btnShowJoin" style="width:100%">Join Room</button>
+        <div id="lobbyStatus" class="status"></div>
+      </div>
+
+      <div class="panel hidden" id="hostPanel" style="max-width:440px;width:100%;margin-top:16px">
+        <p>Share this Room Code with your partner:</p>
+        <div class="room-code-big" id="roomCodeDisplay">------</div>
+        <p style="color:var(--muted);font-size:0.9rem">Waiting for partner to join...</p>
+        <div id="hostStatus" class="status"></div>
+        <button class="secondary" id="btnBackHost" style="margin-top:12px">Back</button>
+      </div>
+
+      <div class="panel hidden" id="joinPanel" style="max-width:440px;width:100%;margin-top:16px">
+        <p>Enter 6-letter Room Code:</p>
+        <input type="text" id="joinCodeInput" maxlength="6" placeholder="ABC123" />
+        <button id="btnJoin" style="width:100%">Join Game</button>
+        <div id="joinStatus" class="status"></div>
+        <button class="secondary" id="btnBackJoin" style="margin-top:10px">Back</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== GAME ========== -->
+  <div id="gameScreen" class="screen">
+    <div id="topBar">
+      <div class="hud-item">Score: <span id="scoreEl">0</span></div>
+      <div class="hud-item">Time: <span id="timerEl">120</span>s</div>
+      <div class="hud-item">You: <span id="myNameEl">?</span></div>
+      <button class="secondary" id="btnLeave" style="padding:6px 14px;font-size:0.9rem">Leave</button>
+    </div>
+    <div id="ordersBar"></div>
+    <canvas id="gameCanvas" width="960" height="540"></canvas>
+
+    <div id="bottomBar">
+      <div class="control-group">
+        <button class="icon-btn" id="btnMic" title="Toggle Microphone">🎤</button>
+        <span id="micLabel" style="font-size:0.85rem;color:var(--muted)">Mic Off</span>
+      </div>
+
+      <div class="music-player">
+        <button id="btnMusicPlay">▶️</button>
+        <button id="btnMusicNext">⏭️</button>
+        <span id="trackName">No track</span>
+      </div>
+    </div>
+
+    <div id="controlsHelp">
+      <strong>Move:</strong> WASD or Arrow Keys &nbsp;•&nbsp; <strong>Interact / Pick up:</strong> Space or Enter<br>
+      Chop → Cook → Plate → Serve. Follow the recipe shown on each order!
+    </div>
+  </div>
+
+  <script>
+    // ====================== CHARACTERS ======================
+    const CHARACTERS = [
+      { id: 'willy', name: 'Willy', gender: 'boy', color: '#3498db', hair: '#2c3e50', outfit: '#2980b9' },
+      { id: 'Mark', name: 'Mark', gender: 'boy', color: '#9b59b6', hair: '#8e44ad', outfit: '#8e44ad' },
+      { id: 'Bato', name: 'Bato', gender: 'boy', color: '#e67e22', hair: '#d35400', outfit: '#d35400' },
+      { id: 'Levin', name: 'Levin', gender: 'boy', color: '#1abc9c', hair: '#16a085', outfit: '#16a085' },
+      { id: 'precious', name: 'Precious', gender: 'girl', color: '#e84393', hair: '#c0392b', outfit: '#fd79a8' },
+      { id: 'mira', name: 'Mira', gender: 'girl', color: '#fd79a8', hair: '#e84393', outfit: '#ff9ff3' },
+      { id: 'Reyni', name: 'Reyni', gender: 'girl', color: '#a29bfe', hair: '#6c5ce7', outfit: '#74b9ff' },
+      { id: 'Zhai', name: 'Zhai', gender: 'girl', color: '#55efc4', hair: '#00b894', outfit: '#81ecec' }
+    ];
+
+    let myChar = null;
+    let partnerChar = null;
+
+    // ====================== AUDIO ======================
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+    function ensureAudio() {
+      if (!audioCtx) audioCtx = new AudioCtx();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playTone(freq, duration, type = 'square', vol = 0.08) {
+      ensureAudio();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.value = freq;
+      gain.gain.value = vol;
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+      osc.stop(audioCtx.currentTime + duration);
+    }
+
+    const SFX = {
+      chop: () => { playTone(180, 0.08); setTimeout(() => playTone(140, 0.1), 70); },
+      cook: () => { playTone(120, 0.3, 'sawtooth', 0.05); },
+      pickup: () => playTone(520, 0.08, 'sine', 0.07),
+      drop: () => playTone(280, 0.1, 'sine', 0.06),
+      serve: () => { playTone(523, 0.12, 'sine', 0.1); setTimeout(() => playTone(659, 0.12, 'sine', 0.1), 100); setTimeout(() => playTone(784, 0.2, 'sine', 0.1), 200); },
+      fail: () => playTone(150, 0.25, 'sawtooth', 0.08),
+      tick: () => playTone(800, 0.04, 'sine', 0.04),
+      order: () => playTone(440, 0.1, 'sine', 0.07)
+    };
+
+    // Free procedural music (ready for Spotify API later via env)
+    let musicPlaying = false;
+    let musicNodes = [];
+    let currentTrack = 0;
+    const TRACKS = [
+      { name: 'Kitchen Groove', base: 110 },
+      { name: 'Happy Cafe', base: 130 },
+      { name: 'Chill Chop', base: 95 }
+    ];
+
+    function stopMusic() {
+      musicNodes.forEach(n => { try { n.stop(); } catch(e){} });
+      musicNodes = [];
+      musicPlaying = false;
+      document.getElementById('btnMusicPlay').textContent = '▶️';
+    }
+
+    function playMusicTrack(idx) {
+      stopMusic();
+      ensureAudio();
+      currentTrack = idx % TRACKS.length;
+      document.getElementById('trackName').textContent = TRACKS[currentTrack].name;
+      const base = TRACKS[currentTrack].base;
+      const now = audioCtx.currentTime;
+      for (let i = 0; i < 8; i++) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = i % 2 === 0 ? 'triangle' : 'sine';
+        osc.frequency.value = base * (i % 3 === 0 ? 1 : i % 3 === 1 ? 1.25 : 1.5);
+        gain.gain.value = 0.03;
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now + i * 0.4);
+        osc.stop(now + i * 0.4 + 2.8);
+        musicNodes.push(osc);
+      }
+      musicPlaying = true;
+      document.getElementById('btnMusicPlay').textContent = '⏸️';
+      setTimeout(() => { if (musicPlaying) playMusicTrack(currentTrack); }, 3200);
+    }
+
+    document.getElementById('btnMusicPlay').onclick = () => {
+      if (musicPlaying) stopMusic();
+      else playMusicTrack(currentTrack);
+    };
+    document.getElementById('btnMusicNext').onclick = () => playMusicTrack(currentTrack + 1);
+
+    // ====================== PEER / NETWORK ======================
+    let peer = null;
+    let conn = null;
+    let mediaConn = null;
+    let isHost = false;
+    let myPeerId = null;
+    let roomCode = null;
+    let localStream = null;
+    let micEnabled = false;
+
+    function generateRoomCode() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let code = '';
+      for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+      return code;
+    }
+
+    function setupPeer(customId = null) {
+      return new Promise((resolve, reject) => {
+        const options = { debug: 0 };
+        peer = customId ? new Peer(customId, options) : new Peer(options);
+        peer.on('open', id => {
+          myPeerId = id;
+          resolve(id);
+        });
+        peer.on('error', err => {
+          if (err.type === 'unavailable-id' && customId) {
+            peer = new Peer(options);
+            peer.on('open', id => { myPeerId = id; resolve(id); });
+            peer.on('error', reject);
+          } else reject(err);
+        });
+      });
+    }
+
+    // ====================== GAME STATE ======================
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const TILE = 48;
+
+    let players = {};
+    let ingredients = [];
+    let orders = [];
+    let score = 0;
+    let timeLeft = 120;
+    let gameOver = false;
+    let keys = {};
+    let lastOrderSpawn = 0;
+
+    const STATIONS = [
+      { x: 2.5, y: 1.8, type: 'chop', label: 'CHOP', color: '#fdcb6e' },
+      { x: 6.5, y: 1.8, type: 'stove', label: 'STOVE', color: '#e17055' },
+      { x: 10.5, y: 1.8, type: 'plate', label: 'PLATE', color: '#74b9ff' },
+      { x: 14.5, y: 1.8, type: 'serve', label: 'SERVE', color: '#55efc4' },
+      { x: 17.5, y: 1.8, type: 'trash', label: 'TRASH', color: '#636e72' }
+    ];
+
+    const RECIPES = {
+      'Burger': { needs: ['bun', 'meat', 'veg'], icon: '🍔' },
+      'Salad': { needs: ['veg', 'veg'], icon: '🥗' },
+      'Steak': { needs: ['meat', 'veg'], icon: '🥩' },
+      'Sandwich': { needs: ['bun', 'veg'], icon: '🥪' }
+    };
+
+    // ====================== RENDERING HELPERS ======================
+    function drawRoundRect(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+
+    function drawCharacter(p, isMe) {
+      const cx = p.x * TILE;
+      const cy = p.y * TILE;
+
+      // soft shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.22)';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 24, 18, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // body (slightly bigger, anime proportions)
+      ctx.fillStyle = p.outfit || p.color;
+      drawRoundRect(cx - 15, cy - 4, 30, 28, 10);
+      ctx.fill();
+
+      // neck
+      ctx.fillStyle = '#f5d0b0';
+      ctx.fillRect(cx - 5, cy - 10, 10, 8);
+
+      // head (slightly larger)
+      ctx.fillStyle = '#fce4c8';
+      ctx.beginPath();
+      ctx.arc(cx, cy - 20, 17, 0, Math.PI * 2);
+      ctx.fill();
+
+      // hair - more anime volume
+      ctx.fillStyle = p.hair || '#2c3e50';
+      ctx.beginPath();
+      ctx.arc(cx, cy - 28, 16, Math.PI * 0.9, Math.PI * 0.1);
+      ctx.fill();
+      // side hair strands
+      ctx.beginPath();
+      ctx.ellipse(cx - 14, cy - 18, 6, 12, -0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(cx + 14, cy - 18, 6, 12, 0.3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // big anime eyes (white)
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.ellipse(cx - 6, cy - 21, 5.5, 6.5, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx + 6, cy - 21, 5.5, 6.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // iris
+      ctx.fillStyle = p.color || '#3498db';
+      ctx.beginPath();
+      ctx.arc(cx - 6, cy - 20.5, 3.2, 0, Math.PI * 2);
+      ctx.arc(cx + 6, cy - 20.5, 3.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // pupil
+      ctx.fillStyle = '#1a1a2e';
+      ctx.beginPath();
+      ctx.arc(cx - 6, cy - 20.5, 1.6, 0, Math.PI * 2);
+      ctx.arc(cx + 6, cy - 20.5, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+
+      // eye highlight
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(cx - 7.5, cy - 22, 1.3, 0, Math.PI * 2);
+      ctx.arc(cx + 4.5, cy - 22, 1.3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // blush
+      ctx.fillStyle = 'rgba(255,140,140,0.35)';
+      ctx.beginPath();
+      ctx.ellipse(cx - 11, cy - 14, 5, 3, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx + 11, cy - 14, 5, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // small smile
+      ctx.strokeStyle = '#e17055';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy - 12, 4, 0.15, Math.PI - 0.15);
+      ctx.stroke();
+
+      // name tag
+      ctx.fillStyle = isMe ? 'rgba(255,159,67,0.92)' : 'rgba(0,0,0,0.55)';
+      drawRoundRect(cx - 30, cy + 28, 60, 18, 7);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 11px Segoe UI';
+      ctx.textAlign = 'center';
+      ctx.fillText(p.name, cx, cy + 41);
+
+      // holding item
+      if (p.holding) {
+        const col = p.holding.type === 'meat' ? '#e17055' : p.holding.type === 'veg' ? '#00b894' : '#fdcb6e';
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.arc(cx + 20, cy - 6, 11, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.fillText(p.holding.type[0].toUpperCase(), cx + 20, cy - 2);
+      }
+    }
+
+    // ====================== GAME LOGIC ======================
+    function spawnIngredient() {
+      const types = ['meat', 'veg', 'bun'];
+      const type = types[Math.floor(Math.random() * types.length)];
+      ingredients.push({
+        x: 2 + Math.random() * 15,
+        y: 7 + Math.random() * 2.5,
+        type,
+        name: type.charAt(0).toUpperCase() + type.slice(1)
+      });
+    }
+
+    function spawnOrder() {
+      const keys = Object.keys(RECIPES);
+      const name = keys[Math.floor(Math.random() * keys.length)];
+      orders.push({
+        name,
+        needs: [...RECIPES[name].needs],
+        icon: RECIPES[name].icon,
+        time: 28 + Math.random() * 12,
+        max: 35
+      });
+      SFX.order();
+    }
+
+    function tryInteract(role) {
+      const p = players[role];
+      if (!p) return;
+
+      for (const s of STATIONS) {
+        if (Math.hypot(p.x - s.x, p.y - s.y) < 1.4) {
+          if (s.type === 'chop' && p.holding && !p.holding.chopped) {
+            p.holding.chopped = true;
+            p.holding.name = 'Chopped ' + p.holding.name;
+            SFX.chop();
+            return;
+          }
+          if (s.type === 'stove' && p.holding && p.holding.chopped && !p.holding.cooked) {
+            p.holding.cooked = true;
+            p.holding.name = 'Cooked ' + p.holding.name.replace('Chopped ', '');
+            SFX.cook();
+            return;
+          }
+          if (s.type === 'plate' && p.holding && p.holding.cooked) {
+            p.holding.plated = true;
+            p.holding.name = 'Plated ' + p.holding.name.replace('Cooked ', '');
+            return;
+          }
+          if (s.type === 'serve' && p.holding && p.holding.plated) {
+            if (orders.length > 0) {
+              score += 120;
+              orders.shift();
+              SFX.serve();
+            } else {
+              SFX.fail();
+            }
+            p.holding = null;
+            return;
+          }
+          if (s.type === 'trash' && p.holding) {
+            p.holding = null;
+            SFX.drop();
+            return;
+          }
+        }
+      }
+
+      if (p.holding) {
+        ingredients.push({ x: p.x, y: p.y + 0.3, type: p.holding.type, name: p.holding.name, chopped: p.holding.chopped, cooked: p.holding.cooked, plated: p.holding.plated });
+        p.holding = null;
+        SFX.drop();
+      } else {
+        for (let i = 0; i < ingredients.length; i++) {
+          const ing = ingredients[i];
+          if (Math.hypot(p.x - ing.x, p.y - ing.y) < 1.15) {
+            p.holding = { ...ing };
+            ingredients.splice(i, 1);
+            SFX.pickup();
+            return;
+          }
+        }
+      }
+    }
+
+    function applyInput(role, keyState, dt) {
+      const p = players[role];
+      if (!p) return;
+      const speed = 4.8 * dt;
+      let dx = 0, dy = 0;
+      if (keyState['KeyW'] || keyState['ArrowUp']) dy -= 1;
+      if (keyState['KeyS'] || keyState['ArrowDown']) dy += 1;
+      if (keyState['KeyA'] || keyState['ArrowLeft']) dx -= 1;
+      if (keyState['KeyD'] || keyState['ArrowRight']) dx += 1;
+      if (dx || dy) {
+        const len = Math.hypot(dx, dy) || 1;
+        p.x = Math.max(1.2, Math.min(18.5, p.x + (dx / len) * speed));
+        p.y = Math.max(1.5, Math.min(9.8, p.y + (dy / len) * speed));
+      }
+    }
+
+    // ====================== NETWORK DATA ======================
+    function send(data) {
+      if (conn && conn.open) conn.send(data);
+    }
+
+    function handleData(data) {
+      if (data.type === 'fullstate' && !isHost) {
+        players = data.players;
+        ingredients = data.ingredients;
+        orders = data.orders;
+        score = data.score;
+        timeLeft = data.timeLeft;
+        gameOver = data.gameOver;
+        if (data.partnerChar) partnerChar = data.partnerChar;
+      }
+      if (data.type === 'input' && isHost) {
+        applyInput('partner', data.keys, data.dt || 0.016);
+        if (data.interact) tryInteract('partner');
+      }
+      if (data.type === 'charinfo') {
+        partnerChar = data.char;
+      }
+    }
+
+    // ====================== VOICE ======================
+    async function toggleMic() {
+      ensureAudio();
+      if (!micEnabled) {
+        try {
+          localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+          micEnabled = true;
+          document.getElementById('btnMic').classList.add('active');
+          document.getElementById('micLabel').textContent = 'Mic On';
+          if (conn && peer && isHost && conn.open) {
+            mediaConn = peer.call(conn.peer, localStream);
+            mediaConn.on('stream', remote => playRemoteStream(remote));
+          }
+        } catch (e) {
+          alert('Microphone permission denied or not available.');
+        }
+      } else {
+        if (localStream) localStream.getTracks().forEach(t => t.stop());
+        localStream = null;
+        micEnabled = false;
+        document.getElementById('btnMic').classList.remove('active');
+        document.getElementById('micLabel').textContent = 'Mic Off';
+      }
+    }
+
+    function playRemoteStream(stream) {
+      const audio = new Audio();
+      audio.srcObject = stream;
+      audio.play().catch(() => {});
+    }
+
+    // ====================== MAIN LOOP ======================
+    let lastTime = performance.now();
+    function gameLoop(now) {
+      const dt = Math.min((now - lastTime) / 1000, 0.05);
+      lastTime = now;
+
+      if (!gameOver) {
+        if (isHost) {
+          applyInput('me', keys, dt);
+          if (keys['Space'] || keys['Enter']) {
+            tryInteract('me');
+            keys['Space'] = keys['Enter'] = false;
+          }
+
+          timeLeft -= dt;
+          if (timeLeft <= 0) { timeLeft = 0; gameOver = true; }
+
+          for (let i = orders.length - 1; i >= 0; i--) {
+            orders[i].time -= dt;
+            if (orders[i].time <= 0) {
+              orders.splice(i, 1);
+              score = Math.max(0, score - 40);
+              SFX.fail();
+            }
+          }
+          if (Date.now() - lastOrderSpawn > 11000 && orders.length < 3) {
+            spawnOrder();
+            lastOrderSpawn = Date.now();
+          }
+          if (ingredients.length < 5 && Math.random() < 0.01) spawnIngredient();
+
+          send({
+            type: 'fullstate',
+            players,
+            ingredients,
+            orders,
+            score,
+            timeLeft,
+            gameOver,
+            partnerChar: myChar
+          });
+        } else {
+          const payload = { type: 'input', keys: { ...keys }, dt };
+          if (keys['Space'] || keys['Enter']) {
+            payload.interact = true;
+            keys['Space'] = keys['Enter'] = false;
+          }
+          send(payload);
+        }
+      }
+
+      // RENDER
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // cozy kitchen background
+      const grd = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      grd.addColorStop(0, '#3d2b1f');
+      grd.addColorStop(0.4, '#4a3728');
+      grd.addColorStop(1, '#2d2118');
+      ctx.fillStyle = grd;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // floor tiles
+      for (let y = 0; y < 12; y++) {
+        for (let x = 0; x < 21; x++) {
+          ctx.fillStyle = (x + y) % 2 === 0 ? '#5d4037' : '#4e342e';
+          ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
+        }
+      }
+
+      // back wall
+      ctx.fillStyle = '#6d4c41';
+      ctx.fillRect(0, 0, canvas.width, 90);
+
+      // stations
+      STATIONS.forEach(s => {
+        ctx.fillStyle = s.color;
+        drawRoundRect(s.x * TILE - 28, s.y * TILE - 20, 80, 70, 12);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(0,0,0,0.2)';
+        drawRoundRect(s.x * TILE - 28, s.y * TILE + 30, 80, 12, 4);
+        ctx.fill();
+        ctx.fillStyle = '#1e272e';
+        ctx.font = 'bold 13px Segoe UI';
+        ctx.textAlign = 'center';
+        ctx.fillText(s.label, s.x * TILE + 12, s.y * TILE + 18);
+      });
+
+      // ingredients
+      ingredients.forEach(ing => {
+        const col = ing.type === 'meat' ? '#e17055' : ing.type === 'veg' ? '#00b894' : '#fdcb6e';
+        ctx.fillStyle = 'rgba(0,0,0,0.2)';
+        ctx.beginPath();
+        ctx.ellipse(ing.x * TILE, ing.y * TILE + 10, 12, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.arc(ing.x * TILE, ing.y * TILE, 13, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(ing.name.slice(0, 4), ing.x * TILE, ing.y * TILE + 4);
+      });
+
+      // players
+      Object.values(players).forEach(p => {
+        drawCharacter(p, p.role === 'me');
+      });
+
+      // game over overlay
+      if (gameOver) {
+        ctx.fillStyle = 'rgba(0,0,0,0.72)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#ff9f43';
+        ctx.font = 'bold 52px Segoe UI';
+        ctx.textAlign = 'center';
+        ctx.fillText("TIME'S UP!", canvas.width / 2, canvas.height / 2 - 30);
+        ctx.fillStyle = '#fff';
+        ctx.font = '32px Segoe UI';
+        ctx.fillText('Score: ' + score, canvas.width / 2, canvas.height / 2 + 30);
+      }
+
+      // HUD update
+      document.getElementById('scoreEl').textContent = score;
+      document.getElementById('timerEl').textContent = Math.ceil(timeLeft);
+
+      const ordersBar = document.getElementById('ordersBar');
+      ordersBar.innerHTML = orders.map(o => {
+        const urgent = o.time < 9 ? 'urgent' : '';
+        const needs = o.needs.map(n => n[0].toUpperCase() + n.slice(1)).join(' + ');
+        return `<div class="order-card ${urgent}">
+          <span style="font-size:1.3rem">${o.icon}</span>
+          <div>
+            <div>${o.name} <small>(${Math.ceil(o.time)}s)</small></div>
+            <div class="recipe-hint">${needs}</div>
+          </div>
+        </div>`;
+      }).join('') || '<span style="color:var(--muted)">Waiting for orders...</span>';
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    // ====================== UI FLOW ======================
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+
+    // Character grid - Anime style profiles
+    const grid = document.getElementById('charGrid');
+    CHARACTERS.forEach(c => {
+      const card = document.createElement('div');
+      card.className = 'char-card';
+      card.innerHTML = `
+        <div class="char-avatar" style="background: linear-gradient(145deg, ${c.color}, ${c.outfit || c.color})">
+          <div class="anime-eye eye-left"></div>
+          <div class="anime-eye eye-right"></div>
+          <div class="blush blush-left"></div>
+          <div class="blush blush-right"></div>
+          <span style="position:relative;z-index:2;font-size:1.6rem;margin-top:8px;display:block">${c.name[0]}</span>
+        </div>
+        <div class="char-name">${c.name}</div>
+        <div class="char-gender">${c.gender}</div>
+      `;
+      card.onclick = () => {
+        document.querySelectorAll('.char-card').forEach(el => el.classList.remove('selected'));
+        card.classList.add('selected');
+        myChar = c;
+        document.getElementById('btnContinue').disabled = false;
+      };
+      grid.appendChild(card);
+    });
+
+    document.getElementById('btnContinue').onclick = () => {
+      document.getElementById('selectedCharName').textContent = myChar.name;
+      showScreen('lobbyScreen');
+    };
+
+    // Lobby buttons
+    document.getElementById('btnCreate').onclick = async () => {
+      try {
+        roomCode = generateRoomCode();
+        document.getElementById('lobbyStatus').textContent = 'Creating room...';
+        await setupPeer(roomCode);
+        isHost = true;
+        document.getElementById('roomCodeDisplay').textContent = roomCode;
+        document.getElementById('hostPanel').classList.remove('hidden');
+        document.getElementById('hostStatus').textContent = 'Room ready! Share the code.';
+
+        peer.on('connection', c => {
+          conn = c;
+          conn.on('data', handleData);
+          conn.on('open', () => {
+            conn.send({ type: 'charinfo', char: myChar });
+            document.getElementById('hostStatus').textContent = 'Partner joined! Starting...';
+            setTimeout(startGame, 700);
+          });
+        });
+
+        peer.on('call', call => {
+          if (localStream) call.answer(localStream);
+          else call.answer();
+          call.on('stream', remote => playRemoteStream(remote));
+          mediaConn = call;
+        });
+      } catch (e) {
+        document.getElementById('lobbyStatus').textContent = 'Error creating room. Try again.';
+        console.error(e);
+      }
+    };
+
+    document.getElementById('btnShowJoin').onclick = () => {
+      document.getElementById('joinPanel').classList.remove('hidden');
+    };
+
+    document.getElementById('btnJoin').onclick = async () => {
+      const code = document.getElementById('joinCodeInput').value.trim().toUpperCase();
+      if (code.length < 4) {
+        document.getElementById('joinStatus').textContent = 'Enter a valid 6-letter code';
+        return;
+      }
+      roomCode = code;
+      document.getElementById('joinStatus').textContent = 'Connecting...';
+      try {
+        await setupPeer();
+        isHost = false;
+        conn = peer.connect(code);
+        conn.on('open', () => {
+          document.getElementById('joinStatus').textContent = 'Connected! Starting...';
+          conn.send({ type: 'charinfo', char: myChar });
+          setTimeout(startGame, 600);
+        });
+        conn.on('data', handleData);
+        conn.on('error', () => {
+          document.getElementById('joinStatus').textContent = 'Failed to connect. Check the code.';
+        });
+
+        peer.on('call', call => {
+          if (localStream) call.answer(localStream);
+          else call.answer();
+          call.on('stream', remote => playRemoteStream(remote));
+          mediaConn = call;
+        });
+      } catch (e) {
+        document.getElementById('joinStatus').textContent = 'Connection error';
+      }
+    };
+
+    document.getElementById('btnBackHost').onclick = () => location.reload();
+    document.getElementById('btnBackJoin').onclick = () => location.reload();
+    document.getElementById('btnLeave').onclick = () => location.reload();
+    document.getElementById('btnMic').onclick = toggleMic;
+
+    function startGame() {
+      players = {
+        me: {
+          x: isHost ? 3 : 15,
+          y: 6,
+          name: myChar.name,
+          color: myChar.color,
+          hair: myChar.hair,
+          outfit: myChar.outfit,
+          holding: null,
+          role: 'me'
+        },
+        partner: {
+          x: isHost ? 15 : 3,
+          y: 6,
+          name: partnerChar ? partnerChar.name : 'Partner',
+          color: partnerChar ? partnerChar.color : '#aaa',
+          hair: partnerChar ? partnerChar.hair : '#555',
+          outfit: partnerChar ? partnerChar.outfit : '#777',
+          holding: null,
+          role: 'partner'
+        }
+      };
+
+      ingredients = [];
+      for (let i = 0; i < 6; i++) spawnIngredient();
+      orders = [];
+      score = 0;
+      timeLeft = 120;
+      gameOver = false;
+      lastOrderSpawn = Date.now();
+      spawnOrder();
+
+      document.getElementById('myNameEl').textContent = myChar.name;
+      showScreen('gameScreen');
+      lastTime = performance.now();
+      requestAnimationFrame(gameLoop);
+
+      if (micEnabled && localStream && isHost && conn) {
+        mediaConn = peer.call(conn.peer, localStream);
+        mediaConn.on('stream', remote => playRemoteStream(remote));
+      }
+    }
+
+    // Keyboard
+    window.addEventListener('keydown', e => {
+      keys[e.code] = true;
+      if (['Space', 'Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+        e.preventDefault();
+      }
+    });
+    window.addEventListener('keyup', e => keys[e.code] = false);
+
+    document.body.addEventListener('touchmove', e => { if (e.target.tagName !== 'INPUT') e.preventDefault(); }, { passive: false });
+  </script>
+</body>
+</html>
